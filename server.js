@@ -12,12 +12,14 @@ const contactRoutes = require('./routes/contact');
 const productRoutes = require('./routes/productCatalogue')
 const tagRoutes = require('./routes/tags');
 const path = require('path');
+const compression = require('compression');
 
 const app = express();
 // const PORT = 5000;
 // const IP = '192.168.1.77';
 
 // Middleware
+app.use(compression());
 app.use(cors());
 app.use(express.json());
 
@@ -40,7 +42,10 @@ app.get('/', (req, res) => {
   res.send('Hello root node');
 });
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '30d',
+  immutable: true
+}));
 
 
 // Signup endpoint (public, creates childadmin by default)
