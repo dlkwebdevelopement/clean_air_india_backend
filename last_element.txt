@@ -1,0 +1,16 @@
+<USER_REQUEST>
+Continue
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-05-20T19:05:56+05:30.
+
+The user's current state is as follows:
+Active Document: r:\ClientProject\cleanairindia\fe\.env.development (LANGUAGE_UNSPECIFIED)
+Cursor is on line: 1
+Other open documents:
+- r:\ClientProject\cleanairindia\be\server.js (LANGUAGE_JAVASCRIPT)
+- r:\ClientProject\cleanairindia\fe\scripts\test-speed.mjs (LANGUAGE_JAVASCRIPT)
+- r:\ClientProject\cleanairindia\fe\scripts\convert-to-webp.mjs (LANGUAGE_JAVASCRIPT)
+- r:\ClientProject\cleanairindia\be\routes\contact.js (LANGUAGE_JAVASCRIPT)
+- r:\ClientProject\cleanairindia\be\insert_blog.js (LANGUAGE_JAVASCRIPT)
+</ADDITIONAL_METADATA>

@@ -274,6 +274,13 @@ userRoutes.post('/', auth, async (req, res) => {
   }
 });
 
+app.get("/api/test", (req, res) => {
+  res.json({
+    success: true,
+    message: "Backend Working"
+  });
+});
+
 app.use('/api/users', userRoutes);
 
 // Start server
