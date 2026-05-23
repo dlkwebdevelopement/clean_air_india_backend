@@ -103,10 +103,21 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single blog by ID
-router.get('/:id', async (req, res) => {
+// Get single blog by ID or Slug
+router.get('/:idOrSlug', async (req, res) => {
   try {
-    const blog = await Blog.findById(req.params.id)
+    const { idOrSlug } = req.params;
+    let query;
+
+    // Check if it's a valid 24-character hex MongoDB ObjectId
+    const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(idOrSlug);
+    if (isValidObjectId) {
+      query = { _id: idOrSlug };
+    } else {
+      query = { slug: idOrSlug };
+    }
+
+    const blog = await Blog.findOne(query)
       .populate('category', 'name')
       .populate('tags', 'name')
       .populate('createdBy', 'firstName lastName role');
