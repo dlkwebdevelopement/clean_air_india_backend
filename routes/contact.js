@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const nodemailer = require('nodemailer');
 const { body, validationResult } = require('express-validator');
 
 // Validation rules
@@ -9,16 +8,6 @@ const contactValidation = [
   body('email-address').isEmail().withMessage('Valid email is required'),
   body('message').notEmpty().withMessage('Message is required')
 ];
-
-// Configure nodemailer transporter using SMTP (e.g. Brevo)
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
 
 // POST route for contact form
 router.post('/contact', contactValidation, async (req, res) => {
@@ -79,15 +68,8 @@ router.post('/contact', contactValidation, async (req, res) => {
       productsList = Array.isArray(products) ? products.join(', ') : products;
     }
 
-    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
-
-    // Email content
-    const mailOptions = {
-      from: fromEmail,
-      to: 'connectcleanair@gmail.com',
-      replyTo: emailAddress,
-      subject: `New Contact Form Submission from ${userName}`,
-      html: `
+    // Send email via PHP script
+    const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -149,51 +131,31 @@ router.post('/contact', contactValidation, async (req, res) => {
             </div>
         </body>
         </html>
-      `
+      `;
+
+    const payload = {
+      subject: `New Contact Form Submission from ${userName}`,
+      html: htmlContent,
+      replyTo: emailAddress
     };
 
-    // Send email
-    await transporter.sendMail(mailOptions);
+    const phpUrl = process.env.PHP_MAIL_URL || 'http://127.0.0.1/send_mail.php';
+    
+    // Forward the email details to the core PHP script
+    const response = await fetch(phpUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-    // Send confirmation email to user
-    const userMailOptions = {
-      from: fromEmail,
-      to: emailAddress,
-      subject: 'Thank you for contacting Connect Clean Air',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background: #f4f4f4; padding: 20px; text-align: center; }
-                .content { background: white; padding: 20px; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>Thank You for Contacting Us</h1>
-                </div>
-                <div class="content">
-                    <p>Dear ${userName},</p>
-                    <p>Thank you for reaching out to Connect Clean Air. We have received your message and will get back to you within 24-48 hours.</p>
-                    <p><strong>Here's a summary of your inquiry:</strong></p>
-                    <p>Phone: ${phoneNumber || 'Not provided'}</p>
-                    <p>Products of Interest: ${productsList}</p>
-                    <p>Message: ${message.substring(0, 200)}${message.length > 200 ? '...' : ''}</p>
-                    <br>
-                    <p>Best regards,<br>Connect Clean Air Team</p>
-                </div>
-            </div>
-        </body>
-        </html>
-      `
-    };
+    if (!response.ok) {
+      throw new Error(`PHP Script returned status ${response.status}`);
+    }
 
-    await transporter.sendMail(userMailOptions);
-    console.log('User confirmation email sent successfully.');
+    const responseData = await response.json();
+    console.log('PHP Mailer Response:', responseData);
 
     res.status(200).json({
       success: true,
@@ -211,18 +173,10 @@ router.post('/contact', contactValidation, async (req, res) => {
 
 // Optional: GET route to verify email service is working
 router.get('/contact/status', async (req, res) => {
-  try {
-    await transporter.verify();
-    res.json({ 
-      success: true, 
-      message: 'Email service is configured correctly' 
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: 'Email service configuration error' 
-    });
-  }
+  res.json({ 
+    success: true, 
+    message: 'Backend is configured to use PHP Mailer script' 
+  });
 });
 
 module.exports = router;
