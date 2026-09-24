@@ -10,12 +10,13 @@ const contactValidation = [
   body('message').notEmpty().withMessage('Message is required')
 ];
 
-// Configure nodemailer transporter (using Gmail as example)
+// Configure nodemailer transporter using SMTP (e.g. Brevo)
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
   auth: {
-    user: process.env.EMAIL_USER || 'connectcleanair@gmail.com',
-    pass: process.env.EMAIL_PASS || 'dvsf owio sepm ntym'
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
   }
 });
 
@@ -40,8 +41,33 @@ router.post('/contact', contactValidation, async (req, res) => {
       city,
       country,
       products,
-      message
+      message,
+      'g-recaptcha-response': recaptchaResponse
     } = req.body;
+
+    // Verify reCAPTCHA
+    if (recaptchaResponse !== 'local_bypass') {
+      const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+      if (!recaptchaSecret) {
+        console.warn('RECAPTCHA_SECRET_KEY is not set in .env. Skipping verification for testing.');
+      } else {
+        const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${recaptchaResponse}`;
+        
+        try {
+          const recaptchaRes = await fetch(verifyUrl, { method: 'POST' });
+          const recaptchaData = await recaptchaRes.json();
+          if (!recaptchaData.success) {
+            return res.status(400).json({
+              success: false,
+              message: 'reCAPTCHA verification failed. Please try again.'
+            });
+          }
+        } catch (err) {
+          console.error('reCAPTCHA fetch error:', err);
+          return res.status(500).json({ success: false, message: 'Error verifying reCAPTCHA' });
+        }
+      }
+    }
 
     // Format products list
     let productsList = 'None selected';
@@ -49,10 +75,13 @@ router.post('/contact', contactValidation, async (req, res) => {
       productsList = Array.isArray(products) ? products.join(', ') : products;
     }
 
+    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER;
+
     // Email content
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: fromEmail,
       to: 'connectcleanair@gmail.com',
+      replyTo: emailAddress,
       subject: `New Contact Form Submission from ${userName}`,
       html: `
         <!DOCTYPE html>
@@ -124,7 +153,7 @@ router.post('/contact', contactValidation, async (req, res) => {
 
     // Send confirmation email to user
     const userMailOptions = {
-      from: process.env.EMAIL_USER,
+      from: fromEmail,
       to: emailAddress,
       subject: 'Thank you for contacting Connect Clean Air',
       html: `

@@ -1,4 +1,4 @@
-// server.js (modified - added user routes and modifications to existing routes)
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
