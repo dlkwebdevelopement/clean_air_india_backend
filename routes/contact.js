@@ -1,6 +1,18 @@
 const express = require('express');
 const router = express.Router();
+const nodemailer = require('nodemailer');
 const { body, validationResult } = require('express-validator');
+
+// Configure nodemailer transporter using Gmail
+const transporter = nodemailer.createTransport({
+  host: process.env.MAIL_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.MAIL_PORT || '587'),
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: process.env.MAIL_USERNAME,
+    pass: process.env.MAIL_PASSWORD
+  }
+});
 
 // Validation rules
 const contactValidation = [
@@ -68,8 +80,13 @@ router.post('/contact', contactValidation, async (req, res) => {
       productsList = Array.isArray(products) ? products.join(', ') : products;
     }
 
-    // Send email via PHP script
-    const htmlContent = `
+    // Send email via Gmail App Password
+    const mailOptions = {
+      from: `"${process.env.MAIL_FROM_NAME || 'CleanAirIndia'}" <${process.env.MAIL_FROM_ADDRESS}>`,
+      to: 'connectcleanair@gmail.com',
+      replyTo: emailAddress,
+      subject: `New Contact Form Submission from ${userName}`,
+      html: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -131,31 +148,12 @@ router.post('/contact', contactValidation, async (req, res) => {
             </div>
         </body>
         </html>
-      `;
-
-    const payload = {
-      subject: `New Contact Form Submission from ${userName}`,
-      html: htmlContent,
-      replyTo: emailAddress
+      `
     };
 
-    const phpUrl = process.env.PHP_MAIL_URL || 'http://127.0.0.1/send_mail.php';
-    
-    // Forward the email details to the core PHP script
-    const response = await fetch(phpUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      throw new Error(`PHP Script returned status ${response.status}`);
-    }
-
-    const responseData = await response.json();
-    console.log('PHP Mailer Response:', responseData);
+    // Send email
+    await transporter.sendMail(mailOptions);
+    console.log('Gmail SMTP Response: Email sent successfully');
 
     res.status(200).json({
       success: true,
@@ -173,10 +171,19 @@ router.post('/contact', contactValidation, async (req, res) => {
 
 // Optional: GET route to verify email service is working
 router.get('/contact/status', async (req, res) => {
-  res.json({ 
-    success: true, 
-    message: 'Backend is configured to use PHP Mailer script' 
-  });
+  try {
+    await transporter.verify();
+    res.json({ 
+      success: true, 
+      message: 'Email service is configured correctly with Gmail' 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Email service configuration error',
+      error: error.message
+    });
+  }
 });
 
 module.exports = router;
