@@ -22,6 +22,8 @@ const transporter = nodemailer.createTransport({
 
 // POST route for contact form
 router.post('/contact', contactValidation, async (req, res) => {
+  console.log('--- New Contact Form Submission Received ---');
+  console.log('Incoming Payload:', req.body);
   try {
     // Check for validation errors
     const errors = validationResult(req);
@@ -54,8 +56,10 @@ router.post('/contact', contactValidation, async (req, res) => {
         const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${recaptchaResponse}`;
         
         try {
+          console.log('Verifying reCAPTCHA with Google...');
           const recaptchaRes = await fetch(verifyUrl, { method: 'POST' });
           const recaptchaData = await recaptchaRes.json();
+          console.log('reCAPTCHA Verification Result:', recaptchaData);
           if (!recaptchaData.success) {
             return res.status(400).json({
               success: false,
@@ -189,6 +193,7 @@ router.post('/contact', contactValidation, async (req, res) => {
     };
 
     await transporter.sendMail(userMailOptions);
+    console.log('User confirmation email sent successfully.');
 
     res.status(200).json({
       success: true,
